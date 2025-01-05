@@ -1,8 +1,3 @@
-/**
- * @fileoverview Tool validation implementation for smolagentsjs
- * @license Apache-2.0
- */
-
 import * as acorn from 'acorn';
 import * as walk from 'acorn-walk';
 import { BASE_BUILTIN_MODULES } from './utils.js';
@@ -16,14 +11,7 @@ export const BUILTIN_NAMES = new Set([
   'Promise', 'Proxy', 'Reflect', 'BigInt', 'Intl'
 ]);
 
-/**
- * Checks method usage and imports
- */
 export class MethodChecker {
-  /**
-   * @param {Set<string>} classAttributes - Class-level attributes
-   * @param {boolean} checkImports - Whether to check imports
-   */
   constructor(classAttributes, checkImports = true) {
     this.undefinedNames = new Set();
     this.imports = new Map();
@@ -35,10 +23,6 @@ export class MethodChecker {
     this.checkImports = checkImports;
   }
 
-  /**
-   * Collect function parameters
-   * @param {Object} node - AST node
-   */
   visitParams(node) {
     for (const param of node.params) {
       if (param.type === 'Identifier') {
@@ -49,10 +33,6 @@ export class MethodChecker {
     }
   }
 
-  /**
-   * Check variable declarations and assignments
-   * @param {Object} node - AST node
-   */
   visitVariableDeclaration(node) {
     for (const decl of node.declarations) {
       if (decl.id.type === 'Identifier') {
@@ -61,10 +41,6 @@ export class MethodChecker {
     }
   }
 
-  /**
-   * Check identifier usage
-   * @param {Object} node - AST node
-   */
   visitIdentifier(node) {
     const name = node.name;
     if (!this.isDefinedName(name)) {
@@ -72,11 +48,6 @@ export class MethodChecker {
     }
   }
 
-  /**
-   * Check if a name is defined
-   * @param {string} name - Name to check
-   * @returns {boolean} Whether the name is defined
-   */
   isDefinedName(name) {
     return (
       BUILTIN_NAMES.has(name) ||
@@ -91,12 +62,6 @@ export class MethodChecker {
   }
 }
 
-/**
- * Validates tool class attributes and methods
- * @param {Function} cls - Class to validate
- * @param {boolean} checkImports - Whether to check imports
- * @throws {Error} If validation fails
- */
 export function validateToolAttributes(cls, checkImports = true) {
   const errors = [];
 
@@ -170,11 +135,6 @@ export function validateToolAttributes(cls, checkImports = true) {
   }
 }
 
-/**
- * Check if a node represents a simple literal value
- * @param {Object} node - AST node
- * @returns {boolean} Whether the node is a simple literal
- */
 function isSimpleLiteral(node) {
   return (
     node.type === 'Literal' ||

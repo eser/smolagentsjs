@@ -1,16 +1,7 @@
-/**
- * @fileoverview Core default tools implementation for smolagentsjs
- * @license Apache-2.0
- */
-
+import { createInterface } from 'node:readline';
 import { Tool } from './tools.js';
-import { AgentAudio } from './types.js';
-import { evaluateCode, BASE_BUILTIN_MODULES, BASE_JS_TOOLS } from './local_nodejs_executor.js';
 import { LocalNodeInterpreter } from './local_nodejs_executor.js';
 
-/**
- * JavaScript interpreter tool that evaluates JavaScript code
- */
 export class JavaScriptInterpreterTool extends Tool {
   constructor() {
     super({
@@ -38,9 +29,6 @@ export class JavaScriptInterpreterTool extends Tool {
   }
 }
 
-/**
- * Final answer tool that provides the final response
- */
 export class FinalAnswerTool extends Tool {
   static name = 'final_answer';
   static description = 'Provides a final answer to the given problem.';
@@ -52,19 +40,11 @@ export class FinalAnswerTool extends Tool {
   };
   static outputType = 'any';
 
-  /**
-   * Execute the tool
-   * @param {any} answer - The final answer
-   * @returns {Promise<any>} The answer
-   */
   async forward(answer) {
     return answer;
   }
 }
 
-/**
- * User input tool that gets input from the user
- */
 export class UserInputTool extends Tool {
   static name = 'user_input';
   static description = "Asks for user's input on a specific question";
@@ -76,14 +56,8 @@ export class UserInputTool extends Tool {
   };
   static outputType = 'string';
 
-  /**
-   * Execute the tool
-   * @param {string} question - Question to ask
-   * @returns {Promise<string>} User's response
-   */
   async forward(question) {
-    // In Node.js environment, we can use readline
-    const readline = require('node:readline').createInterface({
+    const readline = createInterface({
       input: process.stdin,
       output: process.stdout
     });
@@ -97,9 +71,6 @@ export class UserInputTool extends Tool {
   }
 }
 
-/**
- * DuckDuckGo search tool
- */
 export class DuckDuckGoSearchTool extends Tool {
   static name = 'web_search';
   static description = `Performs a duckduckgo web search based on your query (think a Google search) then returns the top search results as a list of dict elements.
@@ -115,7 +86,6 @@ Each result has keys 'title', 'href' and 'body'.`;
   constructor() {
     super();
     try {
-      // Note: This requires the duckduckgo-search npm package to be installed
       this.ddgs = require('duckduckgo-search');
     } catch (e) {
       throw new Error(
@@ -124,11 +94,6 @@ Each result has keys 'title', 'href' and 'body'.`;
     }
   }
 
-  /**
-   * Execute the tool
-   * @param {string} query - Search query
-   * @returns {Promise<string>} Search results
-   */
   async forward(query) {
     const results = await this.ddgs.search(query, { max_results: 10 });
     const postprocessedResults = results.map(result => 
@@ -138,9 +103,6 @@ Each result has keys 'title', 'href' and 'body'.`;
   }
 }
 
-/**
- * Google search tool
- */
 export class GoogleSearchTool extends Tool {
   static name = 'web_search';
   static description = 'Performs a google web search for your query then returns a string of the top search results.';
@@ -162,12 +124,6 @@ export class GoogleSearchTool extends Tool {
     this.serpapiKey = process.env.SERPAPI_API_KEY;
   }
 
-  /**
-   * Execute the tool
-   * @param {string} query - Search query
-   * @param {number} [filterYear] - Optional year filter
-   * @returns {Promise<string>} Search results
-   */
   async forward(query, filterYear = null) {
     if (!this.serpapiKey) {
       throw new Error('Missing SerpAPI key. Make sure you have "SERPAPI_API_KEY" in your env variables.');
@@ -223,9 +179,6 @@ export class GoogleSearchTool extends Tool {
   }
 }
 
-/**
- * Webpage visit tool
- */
 export class VisitWebpageTool extends Tool {
   static name = 'visit_webpage';
   static description = 'Visits a webpage at the given url and reads its content as a markdown string. Use this to browse webpages.';
@@ -240,9 +193,7 @@ export class VisitWebpageTool extends Tool {
   constructor() {
     super();
     try {
-      // Note: These require the respective npm packages to be installed
       this.markdownify = require('markdownify');
-      this.fetch = require('node-fetch');
     } catch (e) {
       throw new Error(
         'You must install packages `markdownify` and `node-fetch` to run this tool: run `npm install markdownify node-fetch`.'
@@ -250,14 +201,9 @@ export class VisitWebpageTool extends Tool {
     }
   }
 
-  /**
-   * Execute the tool
-   * @param {string} url - URL to visit
-   * @returns {Promise<string>} Webpage content as markdown
-   */
   async forward(url) {
     try {
-      const response = await this.fetch(url);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -265,7 +211,6 @@ export class VisitWebpageTool extends Tool {
       const html = await response.text();
       let markdownContent = this.markdownify(html).trim();
 
-      // Remove multiple line breaks
       markdownContent = markdownContent.replace(/\n{3,}/g, '\n\n');
 
       return markdownContent;
@@ -275,36 +220,5 @@ export class VisitWebpageTool extends Tool {
       }
       return `An unexpected error occurred: ${e.message}`;
     }
-  }
-}
-
-/**
- * Speech to text tool
- */
-export class SpeechToTextTool extends Tool {
-  static name = 'transcriber';
-  static description = 'This is a tool that transcribes an audio into text. It returns the transcribed text.';
-  static inputs = {
-    audio: {
-      type: 'audio',
-      description: 'The audio to transcribe. Can be a local path, an url, or a tensor.'
-    }
-  };
-  static outputType = 'string';
-
-  constructor() {
-    super();
-    // Note: This would require setting up a proper speech-to-text service
-    // For now, we'll throw an error indicating it's not implemented
-    throw new Error('SpeechToTextTool is not yet implemented in JavaScript version.');
-  }
-
-  /**
-   * Execute the tool
-   * @param {AgentAudio} audio - Audio input
-   * @returns {Promise<string>} Transcribed text
-   */
-  async forward(audio) {
-    throw new Error('SpeechToTextTool is not yet implemented in JavaScript version.');
   }
 }

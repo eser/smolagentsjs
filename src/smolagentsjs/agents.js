@@ -1,77 +1,13 @@
-/**
- * @fileoverview Core agent implementation for smolagentsjs
- * @license Apache-2.0
- */
-
 import { Tool, Toolbox } from './tools.js';
 import { MessageRole } from './models.js';
-import { truncateContent, AgentError, AgentParsingError, AgentExecutionError, AgentMaxIterationsError } from './utils.js';
+import { truncateContent, AgentParsingError, AgentExecutionError, AgentMaxIterationsError } from './utils.js';
 import { Monitor } from './monitoring.js';
 import { parseCodeBlob } from './utils.js';
 import { LocalNodeInterpreter, BASE_BUILTIN_MODULES } from './local_nodejs_executor.js';
-import { E2BExecutor } from './e2b_executor.js';
 import { CODE_SYSTEM_PROMPT, TOOL_CALLING_SYSTEM_PROMPT, MANAGED_AGENT_PROMPT } from './prompts.js';
-import { SystemPromptStep, HumanInputStep, AssistantOutputStep } from './steps.js';
+import { SystemPromptStep } from './steps.js';
 
-// Constants for styling
-const YELLOW_HEX = "#d4b702";
-
-/**
- * @typedef {Object} ActionStep
- * @property {Array<Object>} [agentMemory]
- * @property {Object} [toolCall]
- * @property {number} [startTime]
- * @property {number} [endTime]
- * @property {number} [iteration]
- * @property {Error} [error]
- * @property {number} [duration]
- * @property {string} [llmOutput]
- * @property {string} [observations]
- * @property {any} [actionOutput]
- */
-
-/**
- * @typedef {Object} PlanningStep
- * @property {string} plan
- * @property {string} facts
- */
-
-/**
- * @typedef {Object} TaskStep
- * @property {string} task
- */
-
-/**
- * @typedef {Object} SystemPromptStep
- * @property {string} systemPrompt
- */
-
-/**
- * @typedef {Object} ToolCall
- * @property {string} name
- * @property {any} arguments
- * @property {string} id
- */
-
-/**
- * Base agent class that implements core functionality
- */
-class MultiStepAgent {
-  /**
-   * @param {Object} config
-   * @param {Array<Tool>|Toolbox} config.tools - Tools or toolbox
-   * @param {Function} config.model - Model callback function
-   * @param {string} [config.systemPrompt] - System prompt
-   * @param {string} [config.toolDescriptionTemplate] - Tool description template
-   * @param {number} [config.maxIterations=6] - Max iterations
-   * @param {Function} [config.toolParser] - Tool parser function
-   * @param {boolean} [config.addBaseTools=false] - Whether to add base tools
-   * @param {boolean} [config.verbose=false] - Verbose mode
-   * @param {Object} [config.grammar] - Grammar config
-   * @param {Object} [config.managedAgents] - Managed agents
-   * @param {Array<Function>} [config.stepCallbacks] - Step callbacks
-   * @param {number} [config.planningInterval] - Planning interval
-   */
+export class MultiStepAgent {
   constructor({
     tools,
     model,
@@ -122,18 +58,10 @@ class MultiStepAgent {
     this.stepCallbacks.push(this.monitor.updateMetrics.bind(this.monitor));
   }
 
-  /**
-   * Get the toolbox
-   * @returns {Toolbox} The toolbox
-   */
   get toolbox() {
     return this._toolbox;
   }
 
-  /**
-   * Initialize the system prompt
-   * @returns {string} The initialized system prompt
-   */
   initializeSystemPrompt() {
     this.systemPrompt = this.formatPromptWithTools(
       this._toolbox,
@@ -147,13 +75,6 @@ class MultiStepAgent {
     return this.systemPrompt;
   }
 
-  /**
-   * Format prompt with tools
-   * @param {Toolbox} toolbox 
-   * @param {string} promptTemplate
-   * @param {string} toolDescriptionTemplate
-   * @returns {string}
-   */
   formatPromptWithTools(toolbox, promptTemplate, toolDescriptionTemplate) {
     const toolDescriptions = toolbox.showToolDescriptions(toolDescriptionTemplate);
     let prompt = promptTemplate.replace("{{tool_descriptions}}", toolDescriptions);
@@ -168,13 +89,6 @@ class MultiStepAgent {
     return prompt;
   }
 
-  /**
-   * Format prompt with managed agents descriptions
-   * @param {string} promptTemplate
-   * @param {Object} managedAgents
-   * @param {string} [placeholder]
-   * @returns {string}
-   */
   formatPromptWithManagedAgentsDescriptions(
     promptTemplate,
     managedAgents,
@@ -197,11 +111,6 @@ class MultiStepAgent {
       );
   }
 
-  /**
-   * Show descriptions of managed agents
-   * @param {Object} managedAgents
-   * @returns {string}
-   */
   showAgentsDescriptions(managedAgents) {
     let desc = `
 You can also give requests to team members.
@@ -215,11 +124,6 @@ Here is a list of the team members that you can call:`;
     return desc;
   }
 
-  /**
-   * Write inner memory from logs
-   * @param {boolean} [summaryMode=false]
-   * @returns {Array<Object>}
-   */
   writeInnerMemoryFromLogs(summaryMode = false) {
     const memory = [];
     
@@ -296,10 +200,6 @@ Here is a list of the team members that you can call:`;
     return memory;
   }
 
-  /**
-   * Get succinct logs
-   * @returns {Array<Object>}
-   */
   getSuccinctLogs() {
     return this.logs.map(log => {
       const { agentMemory, ...rest } = log;
@@ -307,12 +207,6 @@ Here is a list of the team members that you can call:`;
     });
   }
 
-  /**
-   * Execute tool call
-   * @param {string} toolName
-   * @param {Object|string} toolArgs
-   * @returns {Promise<any>}
-   */
   async executeToolCall(toolName, toolArgs) {
     const availableTools = {
       ...this.toolbox.tools,
@@ -362,11 +256,6 @@ ${availableTools[toolName]}`
     }
   }
 
-  /**
-   * Provide final answer
-   * @param {string} task
-   * @returns {Promise<string>}
-   */
   async provideFinalAnswer(task) {
     try {
       const messages = [
@@ -382,25 +271,19 @@ ${availableTools[toolName]}`
       ];
 
       if (typeof this.model.call === 'function') {
-        // If model is an object with a call method
         return await this.model.call(messages);
-      } else if (typeof this.model === 'function') {
-        // If model is a function
-        return await this.model(messages);
-      } else {
-        throw new Error('Model must be either a function or an object with a call method');
       }
+
+      if (typeof this.model === 'function') {
+        return await this.model(messages);
+      }
+
+      throw new Error('Model must be either a function or an object with a call method');
     } catch (e) {
       return `Error in generating final LLM output:\n${e}`;
     }
   }
 
-  /**
-   * Run the agent
-   * @param {string} task
-   * @param {Object} options
-   * @returns {Promise<any>}
-   */
   async run(task, {
     stream = false,
     reset = true,
@@ -450,10 +333,6 @@ ${JSON.stringify(additionalArgs)}.`;
     return stream ? this.streamRun(this.task) : this.directRun(this.task);
   }
 
-  /**
-   * Run in streaming mode
-   * @param {string} task
-   */
   async *streamRun(task) {
     let finalAnswer = null;
     let iteration = 0;
@@ -506,10 +385,6 @@ ${JSON.stringify(additionalArgs)}.`;
     yield this.handleAgentOutputTypes(finalAnswer);
   }
 
-  /**
-   * Run in direct mode
-   * @param {string} task
-   */
   async directRun(task) {
     let finalAnswer = null;
     let iteration = 0;
@@ -561,12 +436,6 @@ ${JSON.stringify(additionalArgs)}.`;
     return this.handleAgentOutputTypes(finalAnswer);
   }
 
-  /**
-   * Planning step
-   * @param {string} task
-   * @param {boolean} isFirstStep
-   * @param {number} iteration
-   */
   async planningStep(task, isFirstStep, iteration) {
     if (isFirstStep) {
       const messagePromptFacts = {
@@ -688,37 +557,17 @@ ${factsUpdate}
     }
   }
 
-  /**
-   * Handle agent output types
-   * @param {any} output
-   * @returns {any}
-   */
   handleAgentOutputTypes(output) {
     // TODO: Implement type handling similar to Python version
     return output;
   }
 
-  /**
-   * Step implementation
-   * @param {ActionStep} logEntry
-   * @returns {Promise<any>}
-   */
   async step(logEntry) {
     throw new Error('Tool must implement step() method');
   }
 }
 
-/**
- * Tool calling agent that uses JSON-like tool calls
- */
-class ToolCallingAgent extends MultiStepAgent {
-  /**
-   * @param {Object} config
-   * @param {Array<Tool>} config.tools - List of tools
-   * @param {Function} config.model - Model callback function
-   * @param {string} [config.systemPrompt] - System prompt
-   * @param {number} [config.planningInterval] - Planning interval
-   */
+export class ToolCallingAgent extends MultiStepAgent {
   constructor({
     tools,
     model,
@@ -735,11 +584,6 @@ class ToolCallingAgent extends MultiStepAgent {
     });
   }
 
-  /**
-   * Perform one step in the ReAct framework
-   * @param {ActionStep} logEntry
-   * @returns {Promise<any>}
-   */
   async step(logEntry) {
     const agentMemory = this.writeInnerMemoryFromLogs();
     this.inputMessages = agentMemory;
@@ -753,10 +597,8 @@ class ToolCallingAgent extends MultiStepAgent {
       let toolName, toolArguments, toolCallId;
       
       try {
-        // Convert tools to array and ensure it's in the right format
         const tools = Array.from(this.toolbox.tools.values());
         const availableTools = tools.map(tool => {
-          // Handle both function tools and class-based tools
           if (typeof tool === 'function') {
             return {
               name: tool.name || 'unnamed_tool',
@@ -836,10 +678,6 @@ class ToolCallingAgent extends MultiStepAgent {
         const observationName = 'image.png';
         this.state[observationName] = observation;
         updatedInformation = `Stored '${observationName}' in memory.`;
-      } else if (observation instanceof AgentAudio) {
-        const observationName = 'audio.mp3';
-        this.state[observationName] = observation;
-        updatedInformation = `Stored '${observationName}' in memory.`;
       } else {
         updatedInformation = String(observation).trim();
       }
@@ -856,13 +694,11 @@ class ToolCallingAgent extends MultiStepAgent {
   writeInnerMemoryFromLogs(summaryMode = false) {
     const memory = [];
     
-    // Add system prompt
     memory.push({
       role: MessageRole.SYSTEM,
       content: this.systemPrompt
     });
 
-    // Process each log entry
     for (const log of this.logs) {
       if (log.task) {
         memory.push({
@@ -911,20 +747,7 @@ class ToolCallingAgent extends MultiStepAgent {
   }
 }
 
-/**
- * Code agent that uses code format for tool calls
- */
-class CodeAgent extends MultiStepAgent {
-  /**
-   * @param {Object} config
-   * @param {Array<Tool>} config.tools - List of tools
-   * @param {Function} config.model - Model callback function
-   * @param {string} [config.systemPrompt] - System prompt
-   * @param {Object} [config.grammar] - Grammar config
-   * @param {Array<string>} [config.additionalAuthorizedImports] - Additional authorized imports
-   * @param {number} [config.planningInterval] - Planning interval
-   * @param {boolean} [config.useE2bExecutor] - Whether to use E2B executor
-   */
+export class CodeAgent extends MultiStepAgent {
   constructor({
     tools,
     model,
@@ -932,7 +755,6 @@ class CodeAgent extends MultiStepAgent {
     grammar = null,
     additionalAuthorizedImports = null,
     planningInterval = null,
-    useE2bExecutor = false,
     ...rest
   }) {
     super({
@@ -945,26 +767,16 @@ class CodeAgent extends MultiStepAgent {
     });
 
     this.additionalAuthorizedImports = additionalAuthorizedImports || [];
-    if (useE2bExecutor && Object.keys(this.managedAgents).length > 0) {
-      throw new Error('Managed agents are not yet supported with remote code execution.');
-    }
 
     const allTools = {
       ...this.toolbox.tools,
       ...this.managedAgents
     };
 
-    if (useE2bExecutor) {
-      this.javascriptExecutor = new E2BExecutor(
-        this.additionalAuthorizedImports,
-        Array.from(allTools.values())
-      );
-    } else {
-      this.javascriptExecutor = new LocalNodeInterpreter(
-        this.additionalAuthorizedImports,
-        allTools
-      );
-    }
+    this.javascriptExecutor = new LocalNodeInterpreter(
+    this.additionalAuthorizedImports,
+    allTools
+    );
 
     this.authorizedImports = [
       ...new Set([...BASE_BUILTIN_MODULES, ...this.additionalAuthorizedImports])
@@ -980,11 +792,6 @@ class CodeAgent extends MultiStepAgent {
     );
   }
 
-  /**
-   * Perform one step in the ReAct framework
-   * @param {ActionStep} logEntry
-   * @returns {Promise<any>}
-   */
   async step(logEntry) {
     const agentMemory = this.writeInnerMemoryFromLogs();
     this.inputMessages = [...agentMemory];
@@ -1057,19 +864,7 @@ class CodeAgent extends MultiStepAgent {
   }
 }
 
-/**
- * Managed agent wrapper
- */
-class ManagedAgent {
-  /**
-   * @param {Object} config
-   * @param {MultiStepAgent} config.agent - Agent instance
-   * @param {string} config.name - Agent name
-   * @param {string} config.description - Agent description
-   * @param {string} [config.additionalPrompting] - Additional prompting
-   * @param {boolean} [config.provideRunSummary=false] - Whether to provide run summary
-   * @param {string} [config.managedAgentPrompt] - Managed agent prompt
-   */
+export class ManagedAgent {
   constructor({
     agent,
     name,
@@ -1086,11 +881,6 @@ class ManagedAgent {
     this.managedAgentPrompt = managedAgentPrompt;
   }
 
-  /**
-   * Write full task
-   * @param {string} task
-   * @returns {string}
-   */
   writeFullTask(task) {
     let fullTask = this.managedAgentPrompt.replace('{name}', this.name).replace('{task}', task);
     if (this.additionalPrompting) {
@@ -1101,12 +891,6 @@ class ManagedAgent {
     return fullTask.trim();
   }
 
-  /**
-   * Call the agent
-   * @param {string} request
-   * @param {Object} kwargs
-   * @returns {Promise<any>}
-   */
   async __call__(request, kwargs = {}) {
     const fullTask = this.writeFullTask(request);
     const output = await this.agent.run(fullTask, kwargs);
@@ -1127,10 +911,3 @@ class ManagedAgent {
     return answer;
   }
 }
-
-export {
-  MultiStepAgent,
-  ToolCallingAgent,
-  CodeAgent,
-  ManagedAgent
-}; 

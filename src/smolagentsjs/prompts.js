@@ -1,8 +1,3 @@
-/**
- * @fileoverview Prompt templates for smolagentsjs
- * @license Apache-2.0
- */
-
 export const SINGLE_STEP_CODE_SYSTEM_PROMPT = `You will be given a task to solve, your job is to come up with a series of simple commands in JavaScript that will perform the task.
 To help you, I will give you access to a set of tools that you can use. Each tool is a JavaScript function and has a description explaining the task it performs, the inputs it expects and the outputs it returns.
 You should first explain which tool you will use to perform the task and for what reason, then write the code in JavaScript.

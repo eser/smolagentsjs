@@ -1,8 +1,3 @@
-/**
- * @fileoverview Model implementations for smolagentsjs
- * @license Apache-2.0
- */
-
 import { Tool } from './tools.js';
 import { parseJsonToolCall } from './utils.js';
 import { HfInference } from '@huggingface/inference';
@@ -20,9 +15,6 @@ export const DEFAULT_CODEAGENT_REGEX_GRAMMAR = {
   value: 'Thought: .+?\\nCode:\\n```(?:js|javascript)?\\n(?:.|\\s)+?\\n```<end_action>'
 };
 
-/**
- * Message roles enum
- */
 export const MessageRole = {
   USER: 'user',
   ASSISTANT: 'assistant',
@@ -41,11 +33,6 @@ export const toolRoleConversions = {
   [MessageRole.TOOL_RESPONSE]: MessageRole.USER
 };
 
-/**
- * Get JSON schema for a tool
- * @param {Tool} tool - Tool to get schema for
- * @returns {Object} JSON schema
- */
 export function getJsonSchema(tool) {
   const properties = structuredClone(tool.inputs);
   const required = [];
@@ -73,12 +60,6 @@ export function getJsonSchema(tool) {
   };
 }
 
-/**
- * Remove stop sequences from content
- * @param {string} content - Content to clean
- * @param {Array<string>} stopSequences - Stop sequences to remove
- * @returns {string} Cleaned content
- */
 export function removeStopSequences(originalContent, stopSequences) {
   let content = originalContent;
   for (const stopSeq of stopSequences) {
@@ -89,12 +70,6 @@ export function removeStopSequences(originalContent, stopSequences) {
   return content;
 }
 
-/**
- * Clean and normalize message list
- * @param {Array<Object>} messageList - List of messages
- * @param {Object} roleConversions - Role conversion mapping
- * @returns {Array<Object>} Cleaned message list
- */
 export function getCleanMessageList(originalMessageList, roleConversions = {}) {
   const finalMessageList = [];
   const messageList = structuredClone(originalMessageList);
@@ -119,9 +94,6 @@ export function getCleanMessageList(originalMessageList, roleConversions = {}) {
   return finalMessageList;
 }
 
-/**
- * Base model class
- */
 export class Model {
   constructor() {
     this.lastInputTokenCount = null;
@@ -135,26 +107,10 @@ export class Model {
     };
   }
 
-  /**
-   * Generate text from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {string} grammar - Grammar pattern
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {string} Generated text
-   */
   generate(messages, stopSequences = null, grammar = null, maxTokens = 1500) {
     throw new Error('Not implemented');
   }
 
-  /**
-   * Process messages and return response
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {string} grammar - Grammar pattern
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {string} Model response
-   */
   call(messages, stopSequences = null, grammar = null, maxTokens = 1500) {
     if (!Array.isArray(messages)) {
       throw new Error('Messages should be a list of dictionaries with "role" and "content" keys.');
@@ -166,15 +122,7 @@ export class Model {
   }
 }
 
-/**
- * Hugging Face API model implementation
- */
 export class HfApiModel extends Model {
-  /**
-   * @param {string} modelId - Model ID to use
-   * @param {string} token - HF API token
-   * @param {number} timeout - API timeout in seconds
-   */
   constructor(modelId = 'Qwen/Qwen2.5-Coder-32B-Instruct', token = null, timeout = 120) {
     super();
     this.modelId = modelId;
@@ -182,14 +130,6 @@ export class HfApiModel extends Model {
     this.client = new HfInference(apiToken);
   }
 
-  /**
-   * Generate text from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {string} grammar - Grammar pattern
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {string} Generated text
-   */
   async generate(messages, stopSequences = null, grammar = null, maxTokens = 1500) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
 
@@ -216,13 +156,6 @@ export class HfApiModel extends Model {
     return response;
   }
 
-  /**
-   * Get tool call from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<Tool>} availableTools - Available tools
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @returns {Promise<Array>} Tool call details
-   */
   async getToolCall(messages, availableTools, stopSequences) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
     
@@ -242,15 +175,7 @@ export class HfApiModel extends Model {
   }
 }
 
-/**
- * LiteLLM model implementation
- */
 export class LiteLLMModel extends Model {
-  /**
-   * @param {string} modelId - Model ID to use
-   * @param {string} apiBase - API base URL
-   * @param {string} apiKey - API key
-   */
   constructor(modelId = 'anthropic/claude-3-5-sonnet-20240620', apiBase = null, apiKey = null) {
     super();
     this.modelId = modelId;
@@ -262,14 +187,6 @@ export class LiteLLMModel extends Model {
     this.litellm.addFunctionToPrompt = true;
   }
 
-  /**
-   * Process messages and return response
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {string} grammar - Grammar pattern
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {Promise<string>} Model response
-   */
   async call(messages, stopSequences = null, grammar = null, maxTokens = 1500) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
     
@@ -287,14 +204,6 @@ export class LiteLLMModel extends Model {
     return response.choices[0].message.content;
   }
 
-  /**
-   * Get tool call from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<Tool>} availableTools - Available tools
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {Promise<Array>} Tool call details
-   */
   async getToolCall(messages, availableTools, stopSequences = null, maxTokens = 1500) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
     
@@ -310,11 +219,11 @@ export class LiteLLMModel extends Model {
             parameters: tool.parameters
           }
         })),
-        tool_choice: { type: "function" },
+        tool_choice: "required",
         stop: stopSequences,
         max_tokens: maxTokens,
-        api_base: this.apiBase,
-        api_key: this.apiKey
+        baseUrl: this.apiBase,
+        apiKey: this.apiKey,
       });
 
       if (!response.choices?.[0]?.message?.tool_calls?.[0]) {
@@ -341,13 +250,7 @@ export class LiteLLMModel extends Model {
   }
 }
 
-/**
- * Transformers model implementation
- */
 export class TransformersModel extends Model {
-  /**
-   * @param {string} modelId - Model ID to use
-   */
   constructor(modelId = null) {
     super();
     const defaultModelId = 'HuggingFaceTB/SmolLM2-1.7B-Instruct';
@@ -367,11 +270,6 @@ export class TransformersModel extends Model {
     }
   }
 
-  /**
-   * Create stopping criteria for generation
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @returns {Object} Stopping criteria
-   */
   makeStoppingCriteria(stopSequences) {
     class StopOnStrings {
       constructor(stopStrings, tokenizer) {
@@ -394,14 +292,6 @@ export class TransformersModel extends Model {
     return [new StopOnStrings(stopSequences, this.tokenizer)];
   }
 
-  /**
-   * Generate text from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {string} grammar - Grammar pattern
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {Promise<string>} Generated text
-   */
   async generate(messages, stopSequences = null, grammar = null, maxTokens = 1500) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
 
@@ -427,14 +317,6 @@ export class TransformersModel extends Model {
     return stopSequences ? removeStopSequences(response, stopSequences) : response;
   }
 
-  /**
-   * Get tool call from messages
-   * @param {Array<Object>} messages - Input messages
-   * @param {Array<Tool>} availableTools - Available tools
-   * @param {Array<string>} stopSequences - Stop sequences
-   * @param {number} maxTokens - Max tokens to generate
-   * @returns {Promise<Array>} Tool call details
-   */
   async getToolCall(messages, availableTools, stopSequences = null, maxTokens = 500) {
     const cleanMessages = getCleanMessageList(messages, toolRoleConversions);
 

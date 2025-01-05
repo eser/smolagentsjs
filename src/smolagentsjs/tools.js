@@ -1,21 +1,4 @@
-/**
- * @fileoverview Core tools implementation for smolagentsjs
- * @license Apache-2.0
- */
-
-// Type definitions
-/**
- * @typedef {Object} ToolInput
- * @property {string} type - The input type (string, boolean, integer, number, image, audio, any, object)
- * @property {string} description - Description of what the input does
- * @property {boolean} [nullable] - Whether the input is optional
- */
-
-/**
- * @typedef {Object.<string, ToolInput>} ToolInputs
- */
-
-const AUTHORIZED_TYPES = [
+export const AUTHORIZED_TYPES = [
   "string",
   "boolean", 
   "integer",
@@ -26,17 +9,7 @@ const AUTHORIZED_TYPES = [
   "object"
 ];
 
-/**
- * Base Tool class that all tools should extend
- */
-class Tool {
-  /**
-   * @param {Object} config
-   * @param {string} config.name - Tool name
-   * @param {string} config.description - Tool description
-   * @param {ToolInputs} config.inputs - Tool input parameters
-   * @param {string} config.outputType - Tool output type
-   */
+export class Tool {
   constructor(config = {}) {
     this.name = config.name;
     this.description = config.description;
@@ -46,10 +19,6 @@ class Tool {
     this.validateArguments();
   }
 
-  /**
-   * Validates the tool configuration
-   * @throws {Error} If validation fails
-   */
   validateArguments() {
     if (!this.name || typeof this.name !== 'string') {
       throw new TypeError('Tool must have a name string');
@@ -80,28 +49,14 @@ class Tool {
     }
   }
 
-  /**
-   * Initialize any resources needed by the tool
-   * Override this in subclasses if needed
-   */
   async setup() {
     this.isInitialized = true;
   }
 
-  /**
-   * Execute the tool with given inputs
-   * @param {...any} args - Tool arguments
-   * @returns {Promise<any>} Tool execution result
-   */
   async forward(...args) {
     throw new Error('Tool must implement forward() method');
   }
 
-  /**
-   * Call the tool with arguments
-   * @param {...any} args - Tool arguments
-   * @returns {Promise<any>} Tool execution result
-   */
   async __call__(...args) {
     if (!this.isInitialized) {
       await this.setup();
@@ -110,12 +65,7 @@ class Tool {
   }
 }
 
-/**
- * Tool decorator factory
- * @param {Object} config - Tool configuration
- * @returns {Function} Decorator function
- */
-function tool(config) {
+export function tool(config) {
   return target => class extends Tool {
     constructor() {
       super({
@@ -129,14 +79,7 @@ function tool(config) {
   }
 }
 
-/**
- * Collection of tools
- */
-class Toolbox {
-  /**
-   * @param {Tool[]} tools - List of tools
-   * @param {boolean} addBaseTools - Whether to add default tools
-   */
+export class Toolbox {
   constructor(tools = [], addBaseTools = false) {
     this._tools = new Map();
     for (const tool of tools) {
@@ -148,25 +91,14 @@ class Toolbox {
     }
   }
 
-  /**
-   * Add default tools
-   */
   addBaseTools() {
     // TODO: Implement default tools
   }
 
-  /**
-   * Get all tools
-   * @returns {Map<string,Tool>} Map of tool name to tool instance
-   */
   get tools() {
     return this._tools;
   }
 
-  /**
-   * Add a tool
-   * @param {Tool} tool Tool instance to add
-   */
   addTool(tool) {
     if (this._tools.has(tool.name)) {
       throw new Error(`Tool ${tool.name} already exists`);
@@ -174,10 +106,6 @@ class Toolbox {
     this._tools.set(tool.name, tool);
   }
 
-  /**
-   * Remove a tool
-   * @param {string} toolName Name of tool to remove
-   */
   removeTool(toolName) {
     if (!this._tools.has(toolName)) {
       throw new Error(`Tool ${toolName} not found`);
@@ -185,10 +113,6 @@ class Toolbox {
     this._tools.delete(toolName);
   }
 
-  /**
-   * Update an existing tool
-   * @param {Tool} tool Tool instance to update
-   */
   updateTool(tool) {
     if (!this._tools.has(tool.name)) {
       throw new Error(`Tool ${tool.name} not found`);
@@ -196,17 +120,10 @@ class Toolbox {
     this._tools.set(tool.name, tool);
   }
 
-  /**
-   * Clear all tools
-   */
   clearToolbox() {
     this._tools.clear();
   }
 
-  /**
-   * Get tool descriptions
-   * @returns {string} Formatted tool descriptions
-   */
   showToolDescriptions() {
     let desc = 'Toolbox contents:\n';
     for (const [name, tool] of this._tools) {
@@ -215,10 +132,3 @@ class Toolbox {
     return desc;
   }
 }
-
-export {
-  Tool,
-  tool,
-  Toolbox,
-  AUTHORIZED_TYPES
-}; 

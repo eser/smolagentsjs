@@ -3,16 +3,14 @@ import { tool } from './src/smolagentsjs/tools.js';
 import { HfApiModel, TransformersModel, LiteLLMModel } from './src/smolagentsjs/models.js';
 import { JavaScriptInterpreterTool } from './src/smolagentsjs/default_tools.js';
 
-// Make sure ANTHROPIC_API_KEY is set
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY environment variable must be set');
+if (!process.env.PLATFORM_API_KEY) {
+  throw new Error('PLATFORM_API_KEY environment variable must be set');
 }
 
-// Initialize the model with the correct model ID
 const model = new LiteLLMModel(
-  "claude-3-sonnet-20240229",
+  "gpt-4o-mini",
   process.env.LITELLM_API_BASE,
-  process.env.ANTHROPIC_API_KEY
+  process.env.PLATFORM_API_KEY
 );
 
 const getWeather = tool(
@@ -36,10 +34,8 @@ const getWeather = tool(
   }
 );
 
-// Create an instance of JavaScriptInterpreterTool with proper configuration
 const jsInterpreter = new JavaScriptInterpreterTool();
 
-// Create the agent with properly instantiated tools
 const agent = new ToolCallingAgent({
   tools: [getWeather, jsInterpreter],
   model: model

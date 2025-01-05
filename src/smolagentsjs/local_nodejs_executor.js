@@ -1,8 +1,3 @@
-/**
- * @fileoverview Local Node.js code executor implementation for smolagentsjs
- * @license Apache-2.0
- */
-
 import vm from 'node:vm';
 import { Console } from 'node:console';
 import { Writable } from 'node:stream';
@@ -72,9 +67,6 @@ export const BASE_JS_TOOLS = {
   }
 };
 
-/**
- * Custom error for interpreter-related issues
- */
 export class InterpreterError extends Error {
   constructor(message) {
     super(message);
@@ -82,9 +74,6 @@ export class InterpreterError extends Error {
   }
 }
 
-/**
- * Captures console output during code execution
- */
 class OutputCapturer {
   constructor() {
     this.output = '';
@@ -106,13 +95,6 @@ class OutputCapturer {
   }
 }
 
-/**
- * Evaluates JavaScript code in a sandboxed environment
- * @param {string} code - Code to evaluate
- * @param {Object} context - Variables and functions available to the code
- * @param {Object} options - Additional options for code execution
- * @returns {*} Result of the code execution
- */
 export function evaluateCode(code, context = {}, options = {}) {
   const outputCapturer = new OutputCapturer();
   
@@ -164,11 +146,6 @@ export function evaluateCode(code, context = {}, options = {}) {
   }
 }
 
-/**
- * Creates a secure require function that only allows specific modules
- * @param {Array<string>} authorizedModules - List of modules that can be required
- * @returns {Function} Secure require function
- */
 function createSecureRequire(authorizedModules) {
   return function secureRequire(moduleName) {
     if (!authorizedModules.includes(moduleName)) {
@@ -180,14 +157,7 @@ function createSecureRequire(authorizedModules) {
   };
 }
 
-/**
- * Local Node.js code interpreter
- */
 export class LocalNodeInterpreter {
-  /**
-   * @param {Array<string>} additionalAuthorizedImports - Additional modules to allow
-   * @param {Object} tools - Tools to make available to the code
-   */
   constructor(additionalAuthorizedImports = [], tools = {}) {
     this.customTools = {};
     this.state = {};
@@ -203,12 +173,6 @@ export class LocalNodeInterpreter {
     };
   }
 
-  /**
-   * Execute code with additional variables
-   * @param {string} codeAction - Code to execute
-   * @param {Object} additionalVariables - Additional variables to make available
-   * @returns {Promise<Array>} Tuple of [result, logs]
-   */
   async __call__(codeAction, additionalVariables = {}) {
     this.state = { ...this.state, ...additionalVariables };
     
